@@ -1,0 +1,15 @@
+{
+  "language": "ru-RU",
+  "wake_word": "джарвис",
+  "preferred_llm": "none",
+  "openai": {
+    "api_key": "",
+    "model": "gpt-4o-mini"
+  },
+  "gemini": {
+    "api_key": "",
+    "model": "gemini-1.5-flash"
+  },
+  "notes_file": "notes.json",
+  "reminders_file": "reminders.json"
+}
