@@ -13,7 +13,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer (Docker)
+      - name: Build APK (Docker + accept SDK licenses)
         run: |
           docker run --rm \
             --entrypoint /bin/bash \
@@ -21,8 +21,33 @@ jobs:
             -w /home/user/app \
             kivy/buildozer:latest \
             -lc "
-              # отключаем вопрос про root (чтобы не было y/n)
+              set -e
+
+              # 1) убрать интерактивный вопрос про root
               sed -i 's/^warn_on_root *=.*/warn_on_root = 0/' buildozer.spec || true
+
+              # 2) поставить cmdline-tools (sdkmanager), если его нет
+              export ANDROID_SDK_ROOT=/root/.buildozer/android/platform/android-sdk
+              export ANDROID_HOME=\$ANDROID_SDK_ROOT
+              mkdir -p \$ANDROID_SDK_ROOT/cmdline-tools
+
+              if [ ! -f \$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager ]; then
+                cd /tmp
+                wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+                unzip -q commandlinetools-linux-11076708_latest.zip -d \$ANDROID_SDK_ROOT/cmdline-tools-tmp
+                mkdir -p \$ANDROID_SDK_ROOT/cmdline-tools/latest
+                mv \$ANDROID_SDK_ROOT/cmdline-tools-tmp/cmdline-tools/* \$ANDROID_SDK_ROOT/cmdline-tools/latest/
+                rm -rf \$ANDROID_SDK_ROOT/cmdline-tools-tmp commandlinetools-linux-11076708_latest.zip
+              fi
+
+              export PATH=\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$ANDROID_SDK_ROOT/platform-tools:\$PATH
+
+              # 3) принять лицензии + поставить build-tools (где есть aidl)
+              yes | sdkmanager --licenses
+              sdkmanager \"platform-tools\" \"platforms;android-34\" \"build-tools;36.0.0\" \"build-tools;36.1.0\"
+
+              # 4) собрать APK
+              cd /home/user/app
               buildozer android debug
             "
 
