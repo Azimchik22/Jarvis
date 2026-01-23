@@ -13,13 +13,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer (Docker, root ok)
+      - name: Build APK with Buildozer (Docker)
         run: |
           docker run --rm \
+            --entrypoint /bin/bash \
             -v "$PWD":/home/user/app \
             -w /home/user/app \
-            kivy/buildozer \
-            bash -lc "
+            kivy/buildozer:latest \
+            -lc "
+              # отключаем вопрос про root (чтобы не было y/n)
               sed -i 's/^warn_on_root *=.*/warn_on_root = 0/' buildozer.spec || true
               buildozer android debug
             "
