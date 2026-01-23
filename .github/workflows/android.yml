@@ -9,10 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install deps
+      - name: Install system deps
         run: |
           sudo apt update
           sudo apt install -y python3 python3-pip git zip unzip openjdk-17-jdk wget
@@ -21,36 +25,34 @@ jobs:
 
       - name: Install Android SDK + accept licenses
         run: |
-          SDKROOT="${GITHUB_WORKSPACE}/android-sdk"
-          mkdir -p "$SDKROOT/cmdline-tools"
-          cd "$GITHUB_WORKSPACE"
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$ANDROID_SDK_ROOT"
 
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-11076708_latest.zip -d "$SDKROOT/cmdline-tools-tmp"
+          unzip -q commandlinetools-linux-11076708_latest.zip -d cmdline-tools-tmp
 
-          mkdir -p "$SDKROOT/cmdline-tools/latest"
-          mv "$SDKROOT/cmdline-tools-tmp/cmdline-tools/"* "$SDKROOT/cmdline-tools/latest/"
-          rm -rf "$SDKROOT/cmdline-tools-tmp" commandlinetools-linux-11076708_latest.zip
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools-tmp/cmdline-tools/* cmdline-tools/latest/
+          rm -rf cmdline-tools-tmp commandlinetools-linux-11076708_latest.zip
 
-          export ANDROID_SDK_ROOT="$SDKROOT"
-          export ANDROID_HOME="$SDKROOT"
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
 
           yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "build-tools;36.1.0"
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Make Buildozer use our SDK (IMPORTANT)
+      - name: Force Buildozer SDK paths (IMPORTANT)
         run: |
-          SDKROOT="${GITHUB_WORKSPACE}/android-sdk"
           mkdir -p "$HOME/.buildozer/android/platform"
           rm -rf "$HOME/.buildozer/android/platform/android-sdk"
-          ln -s "$SDKROOT" "$HOME/.buildozer/android/platform/android-sdk"
-          ls -la "$HOME/.buildozer/android/platform/"
+          ln -s "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
+
+          # старый путь tools/bin нужен buildozer
+          mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
+          ln -sf "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+                 "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
 
       - name: Build APK
         run: |
-          export ANDROID_SDK_ROOT="${GITHUB_WORKSPACE}/android-sdk"
-          export ANDROID_HOME="${GITHUB_WORKSPACE}/android-sdk"
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
           buildozer -v android debug
 
