@@ -9,34 +9,43 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
+      ANDROID_HOME: ${{ github.workspace }}/android-sdk
+      ANDROIDSDK: ${{ github.workspace }}/android-sdk
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
+      - name: Install system deps
         run: |
           sudo apt update
-          sudo apt install -y python3 python3-pip git zip unzip openjdk-17-jdk
+          sudo apt install -y python3 python3-pip git zip unzip openjdk-17-jdk wget
           pip3 install --upgrade pip
           pip3 install buildozer cython
 
-      - name: Install Android SDK
+      - name: Install Android SDK + accept licenses
         run: |
-          mkdir -p $HOME/android-sdk
-          cd $HOME/android-sdk
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$ANDROID_SDK_ROOT"
 
-          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip commandlinetools-linux-11076708_latest.zip
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q commandlinetools-linux-11076708_latest.zip -d cmdline-tools-tmp
+
           mkdir -p cmdline-tools/latest
-          mv cmdline-tools/* cmdline-tools/latest || true
+          # Внутри архива папка cmdline-tools/
+          mv cmdline-tools-tmp/cmdline-tools/* cmdline-tools/latest/
+          rm -rf cmdline-tools-tmp commandlinetools-linux-11076708_latest.zip
 
-          echo "y" | ./cmdline-tools/latest/bin/sdkmanager --licenses
-          ./cmdline-tools/latest/bin/sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "build-tools;36.1.0"
 
       - name: Build APK
         run: |
-          export ANDROID_HOME=$HOME/android-sdk
-          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$PATH
-          buildozer android debug
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          buildozer -v android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
