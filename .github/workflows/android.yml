@@ -23,10 +23,8 @@ jobs:
             -lc "
               set -e
 
-              # убрать интерактивный вопрос про root
               sed -i 's/^warn_on_root *=.*/warn_on_root = 0/' buildozer.spec || true
 
-              # поставить curl/unzip если вдруг нет
               (command -v curl >/dev/null 2>&1) || (apt-get update && apt-get install -y curl)
               (command -v unzip >/dev/null 2>&1) || (apt-get update && apt-get install -y unzip)
 
@@ -34,7 +32,6 @@ jobs:
               export ANDROID_HOME=\$ANDROID_SDK_ROOT
               mkdir -p \$ANDROID_SDK_ROOT/cmdline-tools
 
-              # поставить sdkmanager (cmdline-tools), если его нет
               if [ ! -f \$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager ]; then
                 cd /tmp
                 curl -L -o cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
@@ -44,9 +41,12 @@ jobs:
                 rm -rf \$ANDROID_SDK_ROOT/cmdline-tools-tmp cmdline.zip
               fi
 
+              # ✅ МОСТИК: buildozer ищет sdkmanager в tools/bin (старый путь)
+              mkdir -p \$ANDROID_SDK_ROOT/tools/bin
+              ln -sf \$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager \$ANDROID_SDK_ROOT/tools/bin/sdkmanager
+
               export PATH=\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$ANDROID_SDK_ROOT/platform-tools:\$PATH
 
-              # принять лицензии + поставить build-tools (где есть aidl)
               yes | sdkmanager --licenses
               sdkmanager \"platform-tools\" \"platforms;android-34\" \"build-tools;36.0.0\" \"build-tools;36.1.0\"
 
