@@ -13,15 +13,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK with Buildozer (Docker)
+      - name: Build APK with Buildozer (Docker, non-root)
         run: |
           docker run --rm \
+            --user 1000:1000 \
+            -e HOME=/home/user \
             -v "$PWD":/home/user/app \
+            -w /home/user/app \
             kivy/buildozer \
-            bash -c "
-              cd /home/user/app &&
-              buildozer android debug --yes
-            "
+            buildozer -y android debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
