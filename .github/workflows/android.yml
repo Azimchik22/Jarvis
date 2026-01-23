@@ -9,52 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
-      ANDROID_HOME: ${{ github.workspace }}/android-sdk
-
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install system deps
-        run: |
-          sudo apt update
-          sudo apt install -y python3 python3-pip git zip unzip openjdk-17-jdk wget
-          pip3 install --upgrade pip
-          pip3 install buildozer cython
-
-      - name: Install Android SDK + accept licenses
-        run: |
-          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-          cd "$ANDROID_SDK_ROOT"
-
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-          unzip -q commandlinetools-linux-11076708_latest.zip -d cmdline-tools-tmp
-
-          mkdir -p cmdline-tools/latest
-          mv cmdline-tools-tmp/cmdline-tools/* cmdline-tools/latest/
-          rm -rf cmdline-tools-tmp commandlinetools-linux-11076708_latest.zip
-
-          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
-
-          yes | sdkmanager --licenses
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Force Buildozer SDK paths (IMPORTANT)
-        run: |
-          mkdir -p "$HOME/.buildozer/android/platform"
-          rm -rf "$HOME/.buildozer/android/platform/android-sdk"
-          ln -s "$ANDROID_SDK_ROOT" "$HOME/.buildozer/android/platform/android-sdk"
-
-          # старый путь tools/bin нужен buildozer
-          mkdir -p "$ANDROID_SDK_ROOT/tools/bin"
-          ln -sf "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-                 "$ANDROID_SDK_ROOT/tools/bin/sdkmanager"
-
-      - name: Build APK
-        run: |
-          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
-          buildozer -v android debug
+      - name: Build APK with python-for-android
+        uses: ArtemSBulgakov/python-for-android-action@v1
+        with:
+          app-dir: .
+          build-mode: debug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
