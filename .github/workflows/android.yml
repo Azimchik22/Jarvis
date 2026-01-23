@@ -12,15 +12,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Buildozer
+      - name: Install dependencies
         run: |
           sudo apt update
           sudo apt install -y python3 python3-pip git zip unzip openjdk-17-jdk
           pip3 install --upgrade pip
           pip3 install buildozer cython
 
+      - name: Install Android SDK
+        run: |
+          wget https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip commandlinetools-linux-11076708_latest.zip -d android-sdk
+          mkdir -p android-sdk/cmdline-tools/latest
+          mv android-sdk/cmdline-tools/* android-sdk/cmdline-tools/latest || true
+          export ANDROID_HOME=$PWD/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
       - name: Build APK
         run: |
+          export ANDROID_HOME=$PWD/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$PATH
           buildozer android debug
 
       - name: Upload APK
