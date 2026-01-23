@@ -23,30 +23,33 @@ jobs:
             -lc "
               set -e
 
-              # 1) убрать интерактивный вопрос про root
+              # убрать интерактивный вопрос про root
               sed -i 's/^warn_on_root *=.*/warn_on_root = 0/' buildozer.spec || true
 
-              # 2) поставить cmdline-tools (sdkmanager), если его нет
+              # поставить curl/unzip если вдруг нет
+              (command -v curl >/dev/null 2>&1) || (apt-get update && apt-get install -y curl)
+              (command -v unzip >/dev/null 2>&1) || (apt-get update && apt-get install -y unzip)
+
               export ANDROID_SDK_ROOT=/root/.buildozer/android/platform/android-sdk
               export ANDROID_HOME=\$ANDROID_SDK_ROOT
               mkdir -p \$ANDROID_SDK_ROOT/cmdline-tools
 
+              # поставить sdkmanager (cmdline-tools), если его нет
               if [ ! -f \$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager ]; then
                 cd /tmp
-                wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-                unzip -q commandlinetools-linux-11076708_latest.zip -d \$ANDROID_SDK_ROOT/cmdline-tools-tmp
+                curl -L -o cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+                unzip -q cmdline.zip -d \$ANDROID_SDK_ROOT/cmdline-tools-tmp
                 mkdir -p \$ANDROID_SDK_ROOT/cmdline-tools/latest
                 mv \$ANDROID_SDK_ROOT/cmdline-tools-tmp/cmdline-tools/* \$ANDROID_SDK_ROOT/cmdline-tools/latest/
-                rm -rf \$ANDROID_SDK_ROOT/cmdline-tools-tmp commandlinetools-linux-11076708_latest.zip
+                rm -rf \$ANDROID_SDK_ROOT/cmdline-tools-tmp cmdline.zip
               fi
 
               export PATH=\$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:\$ANDROID_SDK_ROOT/platform-tools:\$PATH
 
-              # 3) принять лицензии + поставить build-tools (где есть aidl)
+              # принять лицензии + поставить build-tools (где есть aidl)
               yes | sdkmanager --licenses
               sdkmanager \"platform-tools\" \"platforms;android-34\" \"build-tools;36.0.0\" \"build-tools;36.1.0\"
 
-              # 4) собрать APK
               cd /home/user/app
               buildozer android debug
             "
